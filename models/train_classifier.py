@@ -23,7 +23,9 @@ from nltk.stem.porter import PorterStemmer
 from sklearn.pipeline import Pipeline
 from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
 from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.svm import LinearSVC
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.multiclass import OneVsRestClassifier
 from sklearn.multioutput import MultiOutputClassifier
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, make_scorer
 from sklearn.model_selection import GridSearchCV
@@ -45,10 +47,8 @@ def load_data():
         Y -> label DataFrame
         category_names -> used for data visualization (app)
     """
-    database_filepath = 'Messages.db'
-    cwd = os.getcwd()
-    dbwd = cwd.replace('/models','/data/').replace('\\models','\\data\\')
-    engine = create_engine('sqlite:///'+dbwd+database_filepath)
+    database_filepath = 'data/Messages.db'
+    engine = create_engine('sqlite:///'+database_filepath)
     print(engine.table_names())
     df = pd.read_sql_table('Messages',engine)
     X = df['message']
@@ -88,13 +88,31 @@ def build_model():
     according to NLP best-practice and apply a classifier.
 
     """
-    pipeline = Pipeline([
-        ('vect', CountVectorizer(tokenizer = tokenize)),
-        ('tfidf', TfidfTransformer()),
-        ('clf', MultiOutputClassifier(RandomForestClassifier()))
-    ])
 
-    return pipeline
+    # Previously tried with RandomForest Classifier model, it was taking long time to execute
+    # deferred this piece of code
+    # pipeline = Pipeline([
+    #         ('vect', CountVectorizer(tokenizer = tokenize)),
+    #         ('tfidf', TfidfTransformer()),
+    #         ('clf', MultiOutputClassifier(RandomForestClassifier()))
+    #     ])
+
+    pipeline = Pipeline([('vect', CountVectorizer(tokenizer=tokenize)),
+                         ('tfidf', TfidfTransformer()),
+                         ('clf', MultiOutputClassifier(
+                            OneVsRestClassifier(LinearSVC())))])
+
+    parameters = {'vect__ngram_range': ((1, 1), (1, 2)),
+                  'vect__max_df': (0.75, 1.0)
+                  }
+
+    # create model using GridSearchCV
+    model = GridSearchCV(estimator=pipeline,
+            param_grid=parameters,
+            verbose=3,
+            cv=3)
+    return model
+
 
 
 def evaluate_model(model, X_test, Y_test, category_names):
@@ -116,7 +134,7 @@ def evaluate_model(model, X_test, Y_test, category_names):
         print('------------------------------------------------------\n')
         print('FEATURE: {}\n'.format(column))
         print(classification_report(Y_test[column],Y_pred_pd[column]))
-
+        
     # Print the whole classification report.
     # Extremely long output
     # Work In Progress: Save Output as Text file!
@@ -140,7 +158,7 @@ def save_model(model):
     
     """
 
-    filename = 'classifier.pkl'
+    filename = 'models/classifier.pkl'
     pickle.dump(model, open(filename, 'wb'))
     pass
 
