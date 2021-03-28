@@ -2,6 +2,7 @@
 # 1. import libraries
 import pandas as pd
 from sqlalchemy import create_engine
+import os
 
 
 # 2. Merge datasets.
@@ -13,8 +14,8 @@ def load_data():
 
         df -> Loaded dasa as Pandas DataFrame
     """
-    messages = pd.read_csv('./disaster_messages.csv')
-    categories = pd.read_csv('./disaster_categories.csv')
+    messages = pd.read_csv('data/disaster_messages.csv')
+    categories = pd.read_csv('data/disaster_categories.csv')
 
     df = pd.merge(messages, categories, left_on='id', right_on='id')
     return df 
@@ -75,7 +76,7 @@ def save_data(df):
     Arguments:
         df -> Clean data Pandas DataFrame
     """
-    database_filename = 'Messages.db'
+    database_filename = 'data/Messages.db'
     engine = create_engine('sqlite:///'+ database_filename)
     df.to_sql('Messages', engine, index=False,  if_exists='replace')
     pass  
